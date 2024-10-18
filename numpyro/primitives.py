@@ -4,6 +4,7 @@
 from collections import namedtuple
 from contextlib import ExitStack, contextmanager
 import functools
+import threading
 import warnings
 
 import jax
@@ -13,7 +14,37 @@ import jax.numpy as jnp
 import numpyro
 from numpyro.util import find_stack_level, identity
 
-_PYRO_STACK = []
+
+class MessengerStack(threading.local):
+    """A stack of Messenger instances that is unique to the current thread."""
+
+    def __init__(self):
+        super().__init__()
+        self.lst = []
+
+    def __len__(self):
+        return len(self.lst)
+
+    def __iter__(self):
+        return iter(self.lst)
+
+    def __contains__(self, item):
+        return item in self.lst
+
+    def __getitem__(self, idx):
+        return self.lst[idx]
+
+    def append(self, item):
+        self.lst.append(item)
+
+    def index(self, item):
+        return self.lst.index(item)
+
+    def pop(self):
+        return self.lst.pop()
+
+
+_PYRO_STACK = MessengerStack()
 
 CondIndepStackFrame = namedtuple("CondIndepStackFrame", ["name", "dim", "size"])
 
